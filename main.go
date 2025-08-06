@@ -33,7 +33,12 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 		}
 	}
 
-	cmd := exec.Command("mods")
+	var cmd *exec.Cmd
+	if jsonOutput {
+		cmd = exec.Command("mods", "-f", "--format-as=json")
+	} else {
+		cmd = exec.Command("mods")
+	}
 	cmd.Stdin = bytes.NewBufferString(prompt)
 
 	var stdout, stderr bytes.Buffer
