@@ -27,6 +27,7 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 	if !ok || prompt == "" {
 		return mcp.NewToolResultError("prompt is required and must be a string"), nil
 	}
+	prompt = " " + prompt
 
 	jsonOutput := false
 	if val, exists := args["json_output"]; exists {
