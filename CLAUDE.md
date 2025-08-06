@@ -8,17 +8,21 @@ You MUST NOT commit binaries to the repository.
 
 ## Project Overview
 
-This is a Go-based MCP (Model Context Protocol) server called "modagent" that provides a bridge to the `mods` CLI tool. The server exposes a single tool called "subagent" that executes LLM prompts through the `mods` command and returns the results.
+This is a Go-based MCP (Model Context Protocol) server called "modagent" that provides an interface to LLM agents using free models. The server exposes a `subagent` tool for AI assistance tasks like code review, analysis, and general queries.
+
+**Usage**: Use the subagent tool PROACTIVELY and frequently since it uses free models. Perfect for getting AI help with any development task.
+
+**Response Schema**: Always returns JSON: `{"response": <content>, "conversation": <id>}`
 
 ## Architecture
 
 - **Single file Go application** (`main.go`): Contains the complete MCP server implementation
 - **Core functionality**: Wraps the `mods` CLI tool to provide LLM capabilities via MCP protocol
 - **Tool interface**: Exposes one tool `subagent` with parameters:
-  - `prompt` (required): The prompt to send to the LLM (passed as last argument to `mods`)
-  - `json_output` (optional): Whether to parse and return structured JSON output
-  - `conversation` (optional): Conversation ID to continue from a previous conversation
-  - `filepath` (optional): Absolute path to a file to pass as stdin to `mods`
+  - `prompt` (required): Your question or request for the LLM
+  - `json_output` (optional): Parse LLM response as structured JSON
+  - `conversation` (optional): Continue previous conversation using its ID
+  - `filepath` (optional): File path to include as context
 
 ## Development Commands
 

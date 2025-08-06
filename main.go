@@ -125,19 +125,19 @@ func main() {
 	subagentServer := NewSubagentServer()
 
 	tool := mcp.NewTool("subagent",
-		mcp.WithDescription("Execute a subagent call using the 'mods' command with prompt as argument"),
+		mcp.WithDescription("Query an LLM agent with free models. Use often for AI assistance, analysis, code review, etc."),
 		mcp.WithString("prompt",
 			mcp.Required(),
-			mcp.Description("The prompt to pass to the subagent as the last argument"),
+			mcp.Description("Your question or request for the LLM"),
 		),
 		mcp.WithBoolean("json_output",
-			mcp.Description("Whether to parse and return stdout as JSON (default: false)"),
+			mcp.Description("Parse LLM response as structured JSON"),
 		),
 		mcp.WithString("conversation",
-			mcp.Description("Optional conversation ID to continue from a previous conversation"),
+			mcp.Description("Continue previous conversation using its ID"),
 		),
 		mcp.WithString("filepath",
-			mcp.Description("Optional absolute path to a file to pass as stdin to mods"),
+			mcp.Description("File path to include as context (sent as stdin)"),
 		),
 	)
 
