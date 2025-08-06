@@ -33,7 +33,7 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 		}
 	}
 
-	cmd := exec.Command("mod")
+	cmd := exec.Command("mods")
 	cmd.Stdin = bytes.NewBufferString(prompt)
 
 	var stdout, stderr bytes.Buffer
@@ -68,7 +68,7 @@ func main() {
 	subagentServer := NewSubagentServer()
 
 	tool := mcp.NewTool("subagent",
-		mcp.WithDescription("Execute a subagent call using the 'mod' command with prompt as stdin"),
+		mcp.WithDescription("Execute a subagent call using the 'mods' command with prompt as stdin"),
 		mcp.WithString("prompt",
 			mcp.Required(),
 			mcp.Description("The prompt to pass to the subagent"),
