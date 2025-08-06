@@ -19,10 +19,10 @@
       in
       {
         packages.default = pkgs.buildGoModule {
-          pname = "";
+          pname = "modagent";
           version = "0.1.0";
           src = ./.;
-          vendorHash = "";
+          vendorHash = "sha256-VTENHawfVpaWtr44aPjao/ZpWyYvTvyt7faMH0px35s=";
         };
 
         apps.default = {
