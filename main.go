@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -33,13 +35,42 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 		}
 	}
 
-	var cmd *exec.Cmd
-	if jsonOutput {
-		cmd = exec.Command("mods", "-f", "--format-as=json")
-	} else {
-		cmd = exec.Command("mods")
+	conversation := ""
+	if val, exists := args["conversation"]; exists {
+		if s, ok := val.(string); ok {
+			conversation = s
+		}
 	}
-	cmd.Stdin = bytes.NewBufferString(prompt)
+
+	filepath := ""
+	if val, exists := args["filepath"]; exists {
+		if s, ok := val.(string); ok {
+			filepath = s
+		}
+	}
+
+	var cmd *exec.Cmd
+	cmdArgs := []string{}
+	if jsonOutput {
+		cmdArgs = append(cmdArgs, "-f", "--format-as=json")
+	}
+	if conversation != "" {
+		cmdArgs = append(cmdArgs, "--continue="+conversation)
+	}
+	cmdArgs = append(cmdArgs, prompt)
+	cmd = exec.Command("mods", cmdArgs...)
+
+	// Handle stdin based on filepath
+	if filepath != "" {
+		file, err := os.Open(filepath)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to open file %s: %v", filepath, err)), nil
+		}
+		defer file.Close()
+		cmd.Stdin = file
+	} else {
+		cmd.Stdin = bytes.NewBufferString("")
+	}
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -51,17 +82,37 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 	}
 
 	output := stdout.String()
+	stderrOutput := stderr.String()
+
+	// Extract conversation ID from stderr
+	conversationID := ""
+	if lines := strings.Split(stderrOutput, "\n"); len(lines) > 0 {
+		lastLine := lines[len(lines)-1]
+		if lastLine == "" && len(lines) > 1 {
+			lastLine = lines[len(lines)-2]
+		}
+		re := regexp.MustCompile(`Conversation saved:\s+(\w+)`)
+		if matches := re.FindStringSubmatch(lastLine); len(matches) > 1 {
+			conversationID = matches[1]
+		}
+	}
+
+	// Wrap response in JSON object
+	responseObj := map[string]interface{}{
+		"response":     output,
+		"conversation": conversationID,
+	}
 
 	if jsonOutput {
 		var result interface{}
 		if err := json.Unmarshal([]byte(output), &result); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to parse JSON: %v", err)), nil
 		}
-		jsonBytes, _ := json.Marshal(result)
-		return mcp.NewToolResultText(string(jsonBytes)), nil
+		responseObj["response"] = result
 	}
 
-	return mcp.NewToolResultText(output), nil
+	jsonBytes, _ := json.Marshal(responseObj)
+	return mcp.NewToolResultText(string(jsonBytes)), nil
 }
 
 func main() {
@@ -73,13 +124,19 @@ func main() {
 	subagentServer := NewSubagentServer()
 
 	tool := mcp.NewTool("subagent",
-		mcp.WithDescription("Execute a subagent call using the 'mods' command with prompt as stdin"),
+		mcp.WithDescription("Execute a subagent call using the 'mods' command with prompt as argument"),
 		mcp.WithString("prompt",
 			mcp.Required(),
-			mcp.Description("The prompt to pass to the subagent"),
+			mcp.Description("The prompt to pass to the subagent as the last argument"),
 		),
 		mcp.WithBoolean("json_output",
 			mcp.Description("Whether to parse and return stdout as JSON (default: false)"),
+		),
+		mcp.WithString("conversation",
+			mcp.Description("Optional conversation ID to continue from a previous conversation"),
+		),
+		mcp.WithString("filepath",
+			mcp.Description("Optional absolute path to a file to pass as stdin to mods"),
 		),
 	)
 
