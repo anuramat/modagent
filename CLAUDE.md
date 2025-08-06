@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Instructions
+
+You MUST NOT commit binaries to the repository.
+
 ## Project Overview
 
 This is a Go-based MCP (Model Context Protocol) server called "modagent" that provides a bridge to the `mods` CLI tool. The server exposes a single tool called "subagent" that executes LLM prompts through the `mods` command and returns the results.
@@ -19,6 +23,7 @@ This is a Go-based MCP (Model Context Protocol) server called "modagent" that pr
 ## Development Commands
 
 ### Build and Run
+
 ```bash
 # Build using Nix (recommended)
 nix build
@@ -34,7 +39,9 @@ go build -o modagent-mcp main.go
 ```
 
 ### Code Formatting
+
 The project uses treefmt with multiple Go formatters:
+
 ```bash
 # Format code (requires treefmt)
 treefmt
@@ -46,6 +53,7 @@ treefmt
 ```
 
 ### Testing and Validation
+
 ```bash
 # Check if flake builds successfully
 nix flake check
@@ -63,6 +71,7 @@ echo "test prompt" | ./modagent-mcp
 ## Key Implementation Details
 
 The server implements a single tool handler `handleSubagentCall` that:
+
 1. Validates the required `prompt` parameter
 2. Optionally enables JSON output formatting and conversation continuation
 3. Reads file content if `filepath` is provided and uses it as stdin
@@ -72,3 +81,4 @@ The server implements a single tool handler `handleSubagentCall` that:
 7. Handles JSON parsing of the response when `json_output=true`
 
 The server runs in stdio mode, making it suitable for MCP client integration.
+
