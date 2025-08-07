@@ -54,6 +54,13 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 		}
 	}
 
+	readonly := false
+	if val, exists := args["readonly"]; exists {
+		if b, ok := val.(bool); ok {
+			readonly = b
+		}
+	}
+
 	var cmd *exec.Cmd
 	cmdArgs := []string{}
 	if jsonOutput {
@@ -61,6 +68,9 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 	}
 	if conversation != "" {
 		cmdArgs = append(cmdArgs, "--continue="+conversation)
+	}
+	if readonly {
+		cmdArgs = append(cmdArgs, "--mcp-disable=tools")
 	}
 	cmdArgs = append(cmdArgs, prompt)
 	cmd = exec.Command("mods", cmdArgs...)
@@ -196,6 +206,9 @@ assistant: 'I'll search for the package in nixpkgs using "nix search nixpkgs [pa
 		),
 		mcp.WithArray("filepaths",
 			mcp.Description("List of absolute file paths to include as context"),
+		),
+		mcp.WithBoolean("readonly",
+			mcp.Description("Disable tools access by adding --mcp-disable=tools to mods call"),
 		),
 	)
 
