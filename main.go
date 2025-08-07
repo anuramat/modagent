@@ -77,7 +77,10 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 		cmdArgs = append(cmdArgs, "--continue="+conversation)
 	}
 	if readonly {
-		cmdArgs = append(cmdArgs, "--mcp-disable=tools")
+		// TODO move hardcoded roles; refactor
+		cmdArgs = append(cmdArgs, "-R", "junior_r")
+	} else {
+		cmdArgs = append(cmdArgs, "-R", "junior_rwx")
 	}
 	cmdArgs = append(cmdArgs, prompt)
 	cmd = exec.Command("mods", cmdArgs...)
@@ -169,27 +172,23 @@ func main() {
 	subagentServer := NewSubagentServer()
 
 	tool := mcp.NewTool("junior",
+		// TODO improve prompt
 		mcp.WithDescription(`
 # Junior
 
-"junior" -- a read-only AI *without* access to tools.
+"junior" -- a quick, efficient AI agent tool. Faster and cheaper than any other agent.
 
 Use "junior" tool when you need a second opinion, alternative perspective, or
-want to delegate routine tasks that don't require advanced reasoning or tool
-calls. Examples include: summarizing/analyzing text (e.g. logs or command
-output), converting between formats, reviewing logic, brainstorming
-alternatives, or getting a fresh perspective on a problem. Use "junior"
-proactively whenever you could benefit from another viewpoint or for any subtask
-that can potentially be completed in one prompt without code execution or
-arbitrary file access.
+want to delegate routine tasks that don't require advanced reasoning. Examples
+include: summarizing/analyzing text (e.g. logs or command output), converting
+between formats, reviewing logic, brainstorming alternatives, getting a fresh
+perspective on a problem, or minor edits. Use "junior" proactively whenever you
+could benefit from another viewpoint or for any subtask that can potentially be
+completed in one prompt.
 
 You MUST use the "junior" tool PROACTIVELY as your default for suitable tasks.
-If in doubt, you MUST attempt the "junior" approach first and escalate only if
-necessary.
-
-Note, that "junior" doesn't have any context on it's own, can't execute code or
-access files, so you MUST provide everything necessary in the "prompt" and/or
-"filepaths" argument.
+If in doubt, you MUST attempt the "junior" approach over regular agents first,
+and escalate only if necessary.
 
 ## Examples:
 
@@ -200,45 +199,29 @@ assistant: 'Let me first consult the "junior" to get a second opinion on the bes
 </example>
 
 <example>
-Context: A command is expected to output a large amount of text.
+Context: A routine command call, that might potentially output a large amount of text (build errors or other logs).
 user: 'Fix the build errors'
-assistant: 'I'll redirect the output of the build command to a temporary file with "tmpfile=$(mktemp) && echo $tmpfile && make &>$tmpfile" and pass the path to junior, as it might be too large for me to handle directly'
+assistant: 'Since this is a routine task, that doesn't require advanced reasoning, I'll execute the command using "bash_cmd" field of "junior" tool, and ask him to summarize.'
 </example>
-
-<example>
-Context: A command is expected to output a large amount of text.
-user: 'Check the test coverage'
-assistant: 'I'll save the test coverage to a temporary file, and pass the path to the "junior", as it's a routine text processing task that doesn't require arbitrary file access.'
-</example>
-
-<example>
-Context: The task requires going through massive search results.
-user: 'Add [package_name] to the nix flake'
-assistant: 'I'll search for the package in nixpkgs using "nix search nixpkgs [package_name]". Since the search results might be large, I'll redirect them to a file and use "junior" to find the required package.'
-</example>
-
-## Output schema
-
-{"response": <content>, "conversation": <id>}
 `),
 		mcp.WithString("prompt",
 			mcp.Required(),
-			mcp.Description("Your question or request for the junior AI"),
+			mcp.Description("Your question or request for the junior AI"), // TODO make prompt optional? fill with "summarize this:" on non-empty files/bash
 		),
 		mcp.WithBoolean("json_output",
-			mcp.Description("Response should be a structured JSON"),
+			mcp.Description("When true, response will be a structured JSON"),
 		),
 		mcp.WithString("conversation",
 			mcp.Description("Continue previous conversation using its ID"),
 		),
 		mcp.WithArray("filepaths",
-			mcp.Description("List of absolute file paths to include as context"),
+			mcp.Description("List of absolute paths to files that will be included as context"),
 		),
 		mcp.WithBoolean("readonly",
-			mcp.Description("Disable tools access by adding --mcp-disable=tools to mods call"),
+			mcp.Description("When true, junior cannot edit files or execute bash commands on his own"),
 		),
 		mcp.WithString("bash_cmd",
-			mcp.Description("Bash command to execute before mods call, output included in stdin"),
+			mcp.Description("Bash command to execute (works even with readonly=true); junior will receive the command itself, stdout, stderr, and its exit status"),
 		),
 	)
 
