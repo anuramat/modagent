@@ -99,13 +99,13 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 	}
 
 	// Wrap response in JSON object
-	responseObj := map[string]interface{}{
+	responseObj := map[string]any{
 		"response":     output,
 		"conversation": conversationID,
 	}
 
 	if jsonOutput {
-		var result interface{}
+		var result any
 		if err := json.Unmarshal([]byte(output), &result); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to parse JSON: %v", err)), nil
 		}
@@ -118,13 +118,13 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 
 func main() {
 	s := server.NewMCPServer(
-		"subagent-server",
-		"1.0.0",
+		"modagent",
+		"0.1.0",
 	)
 
 	subagentServer := NewSubagentServer()
 
-	tool := mcp.NewTool("subagent",
+	tool := mcp.NewTool("junior",
 		mcp.WithDescription(`
 # Junior
 
@@ -179,10 +179,10 @@ assistant: 'I'll search for the package in nixpkgs using "nix search nixpkgs [pa
 `),
 		mcp.WithString("prompt",
 			mcp.Required(),
-			mcp.Description("Your question or request for the LLM"),
+			mcp.Description("Your question or request for the junior AI"),
 		),
 		mcp.WithBoolean("json_output",
-			mcp.Description("LLM response should be a structured JSON"),
+			mcp.Description("Response should be a structured JSON"),
 		),
 		mcp.WithString("conversation",
 			mcp.Description("Continue previous conversation using its ID"),
