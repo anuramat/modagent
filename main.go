@@ -209,7 +209,7 @@ assistant: 'Since this is a routine task, that doesn't require advanced reasonin
 			mcp.Description("Your question or request for the junior AI"), // TODO make prompt optional? fill with "summarize this:" on non-empty files/bash
 		),
 		mcp.WithBoolean("json_output",
-			mcp.Description("When true, response will be a structured JSON"),
+			mcp.Description("Default: false; response will be a structured JSON"),
 		),
 		mcp.WithString("conversation",
 			mcp.Description("Continue previous conversation using its ID"),
@@ -218,7 +218,7 @@ assistant: 'Since this is a routine task, that doesn't require advanced reasonin
 			mcp.Description("List of absolute paths to files that will be included as context"),
 		),
 		mcp.WithBoolean("readonly",
-			mcp.Description("When true, junior cannot edit files or execute bash commands on his own"),
+			mcp.Description("Default: false; junior cannot edit files or execute bash commands on his own"),
 		),
 		mcp.WithString("bash_cmd",
 			mcp.Description("Bash command to execute (works even with readonly=true); junior will receive the command itself, stdout, stderr, and its exit status"),
