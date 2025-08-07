@@ -43,10 +43,14 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 		}
 	}
 
-	filepath := ""
-	if val, exists := args["filepath"]; exists {
-		if s, ok := val.(string); ok {
-			filepath = s
+	var filepaths []string
+	if val, exists := args["filepaths"]; exists {
+		if paths, ok := val.([]interface{}); ok {
+			for _, path := range paths {
+				if s, ok := path.(string); ok {
+					filepaths = append(filepaths, s)
+				}
+			}
 		}
 	}
 
@@ -61,14 +65,17 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 	cmdArgs = append(cmdArgs, prompt)
 	cmd = exec.Command("mods", cmdArgs...)
 
-	// Handle stdin based on filepath
-	if filepath != "" {
-		file, err := os.Open(filepath)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("failed to open file %s: %v", filepath, err)), nil
+	// Handle stdin based on filepaths
+	if len(filepaths) > 0 {
+		var stdinBuffer bytes.Buffer
+		for _, filepath := range filepaths {
+			content, err := os.ReadFile(filepath)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("failed to read file %s: %v", filepath, err)), nil
+			}
+			stdinBuffer.WriteString(fmt.Sprintf("<file path=%s>\n%s</file path=%s>\n", filepath, string(content), filepath))
 		}
-		defer file.Close()
-		cmd.Stdin = file
+		cmd.Stdin = &stdinBuffer
 	} else {
 		cmd.Stdin = bytes.NewBufferString("")
 	}
@@ -187,8 +194,8 @@ assistant: 'I'll search for the package in nixpkgs using "nix search nixpkgs [pa
 		mcp.WithString("conversation",
 			mcp.Description("Continue previous conversation using its ID"),
 		),
-		mcp.WithString("filepath",
-			mcp.Description("File path to include as context"),
+		mcp.WithArray("filepaths",
+			mcp.Description("List of absolute file paths to include as context"),
 		),
 	)
 
