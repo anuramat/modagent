@@ -61,6 +61,13 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 		}
 	}
 
+	bashCmd := ""
+	if val, exists := args["bash_cmd"]; exists {
+		if s, ok := val.(string); ok {
+			bashCmd = s
+		}
+	}
+
 	var cmd *exec.Cmd
 	cmdArgs := []string{}
 	if jsonOutput {
@@ -75,9 +82,30 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 	cmdArgs = append(cmdArgs, prompt)
 	cmd = exec.Command("mods", cmdArgs...)
 
-	// Handle stdin based on filepaths
+	// Handle stdin based on filepaths and bash command
+	var stdinBuffer bytes.Buffer
+
+	// Execute bash command if provided
+	if bashCmd != "" {
+		bashExec := exec.Command("bash", "-c", bashCmd)
+		var bashStdout, bashStderr bytes.Buffer
+		bashExec.Stdout = &bashStdout
+		bashExec.Stderr = &bashStderr
+
+		exitStatus := 0
+		if err := bashExec.Run(); err != nil {
+			if exitError, ok := err.(*exec.ExitError); ok {
+				exitStatus = exitError.ExitCode()
+			} else {
+				exitStatus = 1
+			}
+		}
+
+		stdinBuffer.WriteString(fmt.Sprintf("<bash command=\"%s\" exit_status=\"%d\"><stdout>%s</stdout><stderr>%s</stderr></bash>\n", bashCmd, exitStatus, bashStdout.String(), bashStderr.String()))
+	}
+
+	// Add file contents
 	if len(filepaths) > 0 {
-		var stdinBuffer bytes.Buffer
 		for _, filepath := range filepaths {
 			content, err := os.ReadFile(filepath)
 			if err != nil {
@@ -85,10 +113,9 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 			}
 			stdinBuffer.WriteString(fmt.Sprintf("<file path=%s>\n%s</file path=%s>\n", filepath, string(content), filepath))
 		}
-		cmd.Stdin = &stdinBuffer
-	} else {
-		cmd.Stdin = bytes.NewBufferString("")
 	}
+
+	cmd.Stdin = &stdinBuffer
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -209,6 +236,9 @@ assistant: 'I'll search for the package in nixpkgs using "nix search nixpkgs [pa
 		),
 		mcp.WithBoolean("readonly",
 			mcp.Description("Disable tools access by adding --mcp-disable=tools to mods call"),
+		),
+		mcp.WithString("bash_cmd",
+			mcp.Description("Bash command to execute before mods call, output included in stdin"),
 		),
 	)
 
