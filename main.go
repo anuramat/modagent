@@ -78,9 +78,9 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 	}
 	if readonly {
 		// TODO move hardcoded roles; refactor
-		cmdArgs = append(cmdArgs, "-R", "junior_r")
+		cmdArgs = append(cmdArgs, "-R", "junior-r")
 	} else {
-		cmdArgs = append(cmdArgs, "-R", "junior_rwx")
+		cmdArgs = append(cmdArgs, "-R", "junior-rwx")
 	}
 	cmdArgs = append(cmdArgs, prompt)
 	cmd = exec.Command("mods", cmdArgs...)
