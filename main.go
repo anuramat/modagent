@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/anuramat/modagent/junior"
+	"github.com/anuramat/modagent/summarize"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -17,8 +18,9 @@ func main() {
 	)
 
 	jr := junior.New()
+	sm := summarize.New()
 
-	tool := mcp.NewTool("junior",
+	juniorTool := mcp.NewTool("junior",
 		mcp.WithDescription(junior.Description),
 		mcp.WithString("prompt",
 			mcp.Required(),
@@ -41,7 +43,16 @@ func main() {
 		),
 	)
 
-	s.AddTool(tool, jr.HandleCall)
+	summarizeTool := mcp.NewTool("summarize",
+		mcp.WithDescription(summarize.Description),
+		mcp.WithString("bash_cmd",
+			mcp.Required(),
+			mcp.Description("Bash command to execute and summarize its output"),
+		),
+	)
+
+	s.AddTool(juniorTool, jr.HandleCall)
+	s.AddTool(summarizeTool, sm.HandleCall)
 
 	if err := server.ServeStdio(s); err != nil {
 		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
