@@ -164,9 +164,10 @@ func (s *SubagentServer) handleSubagentCall(ctx context.Context, request mcp.Cal
 }
 
 func main() {
+	version := "unstable"
 	s := server.NewMCPServer(
 		"modagent",
-		"0.1.0",
+		version,
 	)
 
 	subagentServer := NewSubagentServer()

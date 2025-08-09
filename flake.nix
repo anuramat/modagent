@@ -20,7 +20,7 @@
       {
         packages.default = pkgs.buildGoModule {
           pname = "modagent";
-          version = "0.1.0";
+          version = "unstable";
           src = ./.;
           vendorHash = "sha256-VTENHawfVpaWtr44aPjao/ZpWyYvTvyt7faMH0px35s=";
           meta.mainProgram = "modagent";
