@@ -153,10 +153,20 @@ func buildResponse(output, conversationID string, jsonOutput bool) (string, erro
 }
 
 func (s *Server) HandleCall(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return s.handleCallWithReadonly(ctx, request, false)
+}
+
+func (s *Server) HandleCallReadonly(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return s.handleCallWithReadonly(ctx, request, true)
+}
+
+func (s *Server) handleCallWithReadonly(ctx context.Context, request mcp.CallToolRequest, readonly bool) (*mcp.CallToolResult, error) {
 	params, err := parseCallArgs(request.GetArguments())
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
+
+	params.readonly = readonly
 
 	cmd := buildModsCmd(params)
 
