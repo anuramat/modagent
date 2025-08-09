@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -79,8 +81,9 @@ func buildModsCmd(a callArgs) *exec.Cmd {
 	return exec.Command("mods", cmdArgs...)
 }
 
-func prepareStdin(a callArgs) (bytes.Buffer, error) {
+func prepareStdin(a callArgs) (bytes.Buffer, string, error) {
 	var stdinBuffer bytes.Buffer
+	var tempDir string
 
 	if a.bashCmd != "" {
 		bashExec := exec.Command("bash", "-c", a.bashCmd)
@@ -97,18 +100,37 @@ func prepareStdin(a callArgs) (bytes.Buffer, error) {
 			}
 		}
 
+		// Create temp directory and save outputs
+		baseTmpDir := os.Getenv("TMPDIR")
+		if baseTmpDir == "" {
+			baseTmpDir = "/tmp"
+		}
+		timestamp := time.Now().Format("20060102-150405-000000")
+		tempDir = filepath.Join(baseTmpDir, fmt.Sprintf("modagent-%s", timestamp))
+
+		if err := os.MkdirAll(tempDir, 0o755); err != nil {
+			return stdinBuffer, "", fmt.Errorf("failed to create temp directory: %v", err)
+		}
+
+		if err := os.WriteFile(filepath.Join(tempDir, "stdout"), bashStdout.Bytes(), 0o644); err != nil {
+			return stdinBuffer, "", fmt.Errorf("failed to write stdout file: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(tempDir, "stderr"), bashStderr.Bytes(), 0o644); err != nil {
+			return stdinBuffer, "", fmt.Errorf("failed to write stderr file: %v", err)
+		}
+
 		stdinBuffer.WriteString(fmt.Sprintf("<bash command=\"%s\" exit_status=\"%d\"><stdout>%s</stdout><stderr>%s</stderr></bash>\n", a.bashCmd, exitStatus, bashStdout.String(), bashStderr.String()))
 	}
 
 	for _, filepath := range a.filepaths {
 		content, err := os.ReadFile(filepath)
 		if err != nil {
-			return stdinBuffer, fmt.Errorf("failed to read file %s: %v", filepath, err)
+			return stdinBuffer, tempDir, fmt.Errorf("failed to read file %s: %v", filepath, err)
 		}
 		stdinBuffer.WriteString(fmt.Sprintf("<file path=%s>\n%s</file path=%s>\n", filepath, string(content), filepath))
 	}
 
-	return stdinBuffer, nil
+	return stdinBuffer, tempDir, nil
 }
 
 func runCommand(cmd *exec.Cmd) (string, string, error) {
@@ -134,10 +156,14 @@ func extractConversationID(stderrOutput string) string {
 	return conversationID
 }
 
-func buildResponse(output, conversationID string, jsonOutput bool) (string, error) {
+func buildResponse(output, conversationID, tempDir string, jsonOutput bool) (string, error) {
 	responseObj := map[string]any{
 		"response":     output,
 		"conversation": conversationID,
+	}
+
+	if tempDir != "" {
+		responseObj["temp_dir"] = tempDir
 	}
 
 	if jsonOutput {
@@ -170,7 +196,7 @@ func (s *Server) handleCallWithReadonly(ctx context.Context, request mcp.CallToo
 
 	cmd := buildModsCmd(params)
 
-	stdin, err := prepareStdin(params)
+	stdin, tempDir, err := prepareStdin(params)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -183,7 +209,7 @@ func (s *Server) handleCallWithReadonly(ctx context.Context, request mcp.CallToo
 
 	conversationID := extractConversationID(stderr)
 
-	result, err := buildResponse(stdout, conversationID, params.jsonOutput)
+	result, err := buildResponse(stdout, conversationID, tempDir, params.jsonOutput)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
