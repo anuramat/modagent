@@ -70,7 +70,7 @@ func parseCallArgs(args map[string]any) (callArgs, error) {
 func buildModsCmd(a callArgs) *exec.Cmd {
 	cmdArgs := []string{}
 	if a.jsonOutput {
-		cmdArgs = append(cmdArgs, "-f", "--format-as=json")
+		cmdArgs = append(cmdArgs, "-j")
 	}
 	if a.conversation != "" {
 		cmdArgs = append(cmdArgs, "--continue="+a.conversation)
