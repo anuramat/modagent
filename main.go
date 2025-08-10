@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/anuramat/modagent/junior"
-	"github.com/anuramat/modagent/summarize"
+	"github.com/anuramat/modagent/logworm"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -18,7 +18,7 @@ func main() {
 	)
 
 	jr := junior.New()
-	sm := summarize.New()
+	lw := logworm.New()
 
 	juniorRTool := mcp.NewTool("junior-r",
 		mcp.WithDescription(junior.Description+" (read-only mode)"),
@@ -60,17 +60,17 @@ func main() {
 		),
 	)
 
-	summarizeTool := mcp.NewTool("summarize",
-		mcp.WithDescription(summarize.Description),
+	logwormTool := mcp.NewTool("logworm",
+		mcp.WithDescription(logworm.Description),
 		mcp.WithString("bash_cmd",
 			mcp.Required(),
-			mcp.Description("Bash command to execute and summarize its output"),
+			mcp.Description("Bash command to execute and analyze its output"),
 		),
 	)
 
 	s.AddTool(juniorRTool, jr.HandleCallReadonly)
 	s.AddTool(juniorRWXTool, jr.HandleCall)
-	s.AddTool(summarizeTool, sm.HandleCall)
+	s.AddTool(logwormTool, lw.HandleCall)
 
 	if err := server.ServeStdio(s); err != nil {
 		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)

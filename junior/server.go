@@ -28,6 +28,7 @@ type callArgs struct {
 	filepaths    []string
 	readonly     bool
 	bashCmd      string
+	role         string
 }
 
 func parseCallArgs(args map[string]any) (callArgs, error) {
@@ -60,6 +61,9 @@ func parseCallArgs(args map[string]any) (callArgs, error) {
 	if val, ok := args["bash_cmd"].(string); ok {
 		a.bashCmd = val
 	}
+	if val, ok := args["role"].(string); ok {
+		a.role = val
+	}
 	return a, nil
 }
 
@@ -71,8 +75,9 @@ func buildModsCmd(a callArgs) *exec.Cmd {
 	if a.conversation != "" {
 		cmdArgs = append(cmdArgs, "--continue="+a.conversation)
 	}
-	if a.readonly {
-		// TODO move hardcoded roles; refactor
+	if a.role != "" {
+		cmdArgs = append(cmdArgs, "-R", a.role)
+	} else if a.readonly {
 		cmdArgs = append(cmdArgs, "-R", "junior-r")
 	} else {
 		cmdArgs = append(cmdArgs, "-R", "junior-rwx")

@@ -25,5 +25,5 @@ assistant: 'Let me first consult the "junior" to get a second opinion on the bes
 <example>
 Context: A routine command call, that might potentially output a large amount of text (build errors or other logs).
 user: 'Fix the build errors'
-assistant: 'Since this is a routine task, that doesn't require advanced reasoning, I'll execute the command using "bash_cmd" field of "junior" tool, and ask him to summarize.'
+assistant: 'Since this is a routine task, that doesn't require advanced reasoning, I'll execute the command using "bash_cmd" field of "junior" tool, and ask him to analyze.'
 </example>
