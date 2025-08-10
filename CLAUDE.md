@@ -8,7 +8,7 @@ You MUST NOT commit binaries to the repository.
 
 ## Project Overview
 
-This is a Go-based MCP (Model Context Protocol) server called "modagent" that provides an interface to LLM agents using free models. The server exposes a `junior` tool for AI assistance tasks like code review, analysis, and general queries.
+This is a Go-based MCP (Model Context Protocol) server called "modagent" that provides an interface to LLM agents using free models. The server exposes multiple tools: `junior-r`/`junior-rwx` for general AI assistance, and `logworm` for command output analysis.
 
 **Usage**: Use the junior tool PROACTIVELY and frequently since it uses free models. Perfect for getting AI help with any development task.
 
@@ -18,17 +18,29 @@ This is a Go-based MCP (Model Context Protocol) server called "modagent" that pr
 
 - **Modular Go application**: Main entry point (`main.go`) with functionality split into packages
 - **Junior package** (`junior/`): Contains the core server implementation
-  - `server.go`: Server struct and request handling logic
+  - `server.go`: Server struct with modular role handling logic
   - `description.go`: Embeds the tool description from `description.md`
   - `description.md`: Markdown documentation for the junior tool
+- **Logworm package** (`logworm/`): Specialized tool for command output analysis
+  - `server.go`: Wraps junior with logworm role
+  - `description.go`: Embeds tool description
+  - `description.md`: Markdown documentation for logworm
 - **Core functionality**: Wraps the `mods` CLI tool to provide LLM capabilities via MCP protocol
-- **Tool interface**: Exposes one tool `junior` with parameters:
+- **Tool interfaces**: Exposes three tools:
+  - `junior-r` (read-only): General AI assistance with file/bash access disabled
+  - `junior-rwx` (full access): General AI assistance with full capabilities
+  - `logworm`: Specialized for analyzing command outputs using dedicated role
+
+**Junior tool parameters**:
   - `prompt` (required): Your question or request for the LLM
   - `json_output` (optional): Parse LLM response as structured JSON
   - `conversation` (optional): Continue previous conversation using its ID
   - `filepaths` (optional): Array of absolute file paths to include as context
-  - `readonly` (optional): Disable file/bash access for junior (uses "junior-r" role instead of "junior-rwx")
   - `bash_cmd` (optional): Bash command to execute, output included in stdin with XML tags
+  - `role` (optional): Custom mods role to use (overrides readonly/rwx defaults)
+
+**Logworm tool parameters**:
+  - `bash_cmd` (required): Bash command to execute and analyze its output
 
 ## Development Commands
 
@@ -84,8 +96,8 @@ The server is organized into the following components:
 
 ### Main (`main.go`)
 - Creates MCP server instance with version "unstable"
-- Instantiates junior server
-- Registers the `junior` tool with its parameter schema
+- Instantiates junior and logworm servers
+- Registers three tools: `junior-r`, `junior-rwx`, and `logworm`
 - Serves via stdio for MCP client integration
 
 ### Junior Server (`junior/server.go`)
@@ -95,7 +107,11 @@ The `HandleCall` method processes requests through these steps:
 2. **Build mods command**: Construct command with appropriate flags:
    - `-f --format-as=json` for JSON output
    - `--continue=<id>` for conversation continuation
-   - `-R junior-r` or `-R junior-rwx` based on readonly flag
+   - `-R <role>` where role can be:
+     - Explicit role from `role` parameter
+     - `junior-r` for readonly mode
+     - `junior-rwx` for full access mode
+     - Custom roles like `logworm` for specialized tools
 3. **Prepare stdin**: 
    - Execute bash command if provided, wrap output in XML tags
    - Read file contents if provided, wrap in XML tags
