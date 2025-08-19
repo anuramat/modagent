@@ -22,7 +22,7 @@
           pname = "modagent";
           version = "unstable";
           src = ./.;
-          vendorHash = "sha256-VTENHawfVpaWtr44aPjao/ZpWyYvTvyt7faMH0px35s=";
+          vendorHash = "sha256-4AePrpLGGCWMTem6/7cqzyPWCmUvpEcWGA1MimFkx6o=";
           meta.mainProgram = "modagent";
         };
 

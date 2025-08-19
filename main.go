@@ -1,9 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
+	"github.com/anuramat/modagent/config"
 	"github.com/anuramat/modagent/junior"
 	"github.com/anuramat/modagent/logworm"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -11,6 +13,23 @@ import (
 )
 
 func main() {
+	generateConfig := flag.Bool("generate-config", false, "Generate default config file and exit")
+	flag.Parse()
+
+	if *generateConfig {
+		if err := config.GenerateDefaultConfig(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to generate config: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
 	version := "unstable"
 	s := server.NewMCPServer(
 		"modagent",
@@ -21,7 +40,7 @@ func main() {
 	lw := logworm.New()
 
 	juniorRTool := mcp.NewTool("junior-r",
-		mcp.WithDescription(junior.Description+" (read-only mode)"),
+		mcp.WithDescription(cfg.GetToolDescription("junior-r", junior.Description+" (read-only mode)")),
 		mcp.WithString("prompt",
 			mcp.Required(),
 			mcp.Description("Your question or request for the junior AI"),
@@ -41,7 +60,7 @@ func main() {
 	)
 
 	juniorRWXTool := mcp.NewTool("junior-rwx",
-		mcp.WithDescription(junior.Description+" (full access mode)"),
+		mcp.WithDescription(cfg.GetToolDescription("junior-rwx", junior.Description+" (full access mode)")),
 		mcp.WithString("prompt",
 			mcp.Required(),
 			mcp.Description("Your question or request for the junior AI"),
@@ -61,7 +80,7 @@ func main() {
 	)
 
 	logwormTool := mcp.NewTool("logworm",
-		mcp.WithDescription(logworm.Description),
+		mcp.WithDescription(cfg.GetToolDescription("logworm", logworm.Description)),
 		mcp.WithString("bash_cmd",
 			mcp.Required(),
 			mcp.Description("Bash command to execute and analyze its output"),

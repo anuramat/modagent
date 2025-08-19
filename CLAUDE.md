@@ -17,6 +17,8 @@ This is a Go-based MCP (Model Context Protocol) server called "modagent" that pr
 ## Architecture
 
 - **Modular Go application**: Main entry point (`main.go`) with functionality split into packages
+- **Config package** (`config/`): XDG-compliant configuration system
+  - `config.go`: Config loading, validation, and generation with tool description overrides
 - **Junior package** (`junior/`): Contains the core server implementation
   - `server.go`: Server struct with modular role handling logic
   - `description.go`: Embeds the tool description from `description.md`
@@ -43,6 +45,41 @@ This is a Go-based MCP (Model Context Protocol) server called "modagent" that pr
 **Logworm tool parameters**:
 
 - `bash_cmd` (required): Bash command to execute and analyze its output
+
+## Configuration
+
+The server supports XDG-compliant configuration for customizing tool descriptions:
+
+**Config Location**: `$XDG_CONFIG_HOME/modagent/config.yaml` (fallback: `~/.config/modagent/config.yaml`)
+
+**Generate Default Config**:
+```bash
+./modagent -generate-config
+```
+
+**Config Format**:
+```yaml
+tools:
+  junior-r:
+    description:
+      text: "Custom description for junior-r tool"
+  junior-rwx:
+    description:
+      path: "descriptions/junior-rwx.md"
+  logworm:
+    description:
+      text: ""  # Empty description
+```
+
+**Features**:
+- Two ways to specify descriptions: `text` (inline) or `path` (file reference)
+- `text` and `path` are mutually exclusive per tool
+- Relative paths resolved relative to config directory
+- Validates tool names on startup (fails if unknown tools specified)
+- Validates file paths exist when using `path` option
+- Backwards compatible (works without config file)
+- Generated config contains actual default descriptions using `text`
+- Empty strings in `text` are treated as valid empty descriptions
 
 ## Development Commands
 
@@ -89,6 +126,7 @@ echo "test prompt" | ./modagent
 ## Dependencies
 
 - **MCP Framework**: Uses `github.com/mark3labs/mcp-go` for MCP protocol implementation
+- **XDG Support**: Uses `github.com/adrg/xdg` for cross-platform config directory handling
 - **External requirement**: Requires `mods` CLI tool to be available in PATH
 - **Go version**: 1.23+
 
@@ -98,10 +136,20 @@ The server is organized into the following components:
 
 ### Main (`main.go`)
 
+- Handles command-line flags (`-generate-config`)
+- Loads and validates configuration on startup
 - Creates MCP server instance with version "unstable"
 - Instantiates junior and logworm servers
-- Registers three tools: `junior-r`, `junior-rwx`, and `logworm`
+- Registers three tools: `junior-r`, `junior-rwx`, and `logworm` with configurable descriptions
 - Serves via stdio for MCP client integration
+
+### Config System (`config/config.go`)
+
+- **XDG Directory Support**: Uses standard config directories across platforms
+- **Config Loading**: Automatically loads config on startup, gracefully handles missing files
+- **Validation**: Prevents startup if config contains unknown tool names
+- **Generation**: `-generate-config` flag creates default config with actual default descriptions
+- **Override Logic**: Uses config descriptions when present, falls back to embedded defaults
 
 ### Junior Server (`junior/server.go`)
 
