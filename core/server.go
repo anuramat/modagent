@@ -26,7 +26,6 @@ type CallArgs struct {
 }
 
 type ServerConfig interface {
-	ParseArgs(args map[string]any) (CallArgs, error)
 	GetDefaultRole(readonly bool) string
 }
 
@@ -47,7 +46,7 @@ func (s *BaseServer) HandleCallReadonly(ctx context.Context, request mcp.CallToo
 }
 
 func (s *BaseServer) handleCallWithReadonly(ctx context.Context, request mcp.CallToolRequest, readonly bool) (*mcp.CallToolResult, error) {
-	params, err := s.config.ParseArgs(request.GetArguments())
+	params, err := ParseArgs(request.GetArguments())
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -167,6 +166,42 @@ func extractConversationID(stderrOutput string) string {
 		}
 	}
 	return conversationID
+}
+
+func ParseArgs(args map[string]any) (CallArgs, error) {
+	var a CallArgs
+
+	prompt, ok := args["prompt"].(string)
+	if !ok || prompt == "" {
+		return a, fmt.Errorf("prompt is required and must be a string")
+	}
+	a.Prompt = " " + prompt
+
+	if val, ok := args["json_output"].(bool); ok {
+		a.JsonOutput = val
+	}
+	if val, ok := args["conversation"].(string); ok {
+		a.Conversation = val
+	}
+	if val, exists := args["filepaths"]; exists {
+		if paths, ok := val.([]interface{}); ok {
+			for _, p := range paths {
+				if s, ok := p.(string); ok {
+					a.Filepaths = append(a.Filepaths, s)
+				}
+			}
+		}
+	}
+	if val, ok := args["readonly"].(bool); ok {
+		a.Readonly = val
+	}
+	if val, ok := args["bash_cmd"].(string); ok {
+		a.BashCmd = val
+	}
+	if val, ok := args["role"].(string); ok {
+		a.Role = val
+	}
+	return a, nil
 }
 
 func buildResponse(output, conversationID, tempDir string, jsonOutput bool) (string, error) {

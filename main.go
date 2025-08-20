@@ -39,45 +39,21 @@ func main() {
 	jr := junior.New()
 	lw := logworm.New()
 
-	juniorRTool := mcp.NewTool("junior-r",
-		mcp.WithDescription(cfg.GetToolDescription("junior-r", junior.Description+" (read-only mode)")),
-		mcp.WithString("prompt",
-			mcp.Required(),
-			mcp.Description("Your question or request for the junior AI"),
-		),
-		mcp.WithBoolean("json_output",
-			mcp.Description("Default: false; response will be a structured JSON"),
-		),
-		mcp.WithString("conversation",
-			mcp.Description("Continue previous conversation using its ID"),
-		),
-		mcp.WithArray("filepaths",
-			mcp.Description("List of absolute paths to files that will be included as context"),
-		),
-		mcp.WithString("bash_cmd",
-			mcp.Description("Bash command to execute; junior will receive the command itself, stdout, stderr, and its exit status"),
-		),
-	)
+	juniorParams := []mcp.ToolOption{
+		mcp.WithString("prompt", mcp.Required(), mcp.Description("Your question or request for the junior AI")),
+		mcp.WithBoolean("json_output", mcp.Description("Default: false; response will be a structured JSON")),
+		mcp.WithString("conversation", mcp.Description("Continue previous conversation using its ID")),
+		mcp.WithArray("filepaths", mcp.Description("List of absolute paths to files that will be included as context")),
+		mcp.WithString("bash_cmd", mcp.Description("Bash command to execute; junior will receive the command itself, stdout, stderr, and its exit status")),
+	}
 
-	juniorRWXTool := mcp.NewTool("junior-rwx",
+	juniorRTool := mcp.NewTool("junior-r", append([]mcp.ToolOption{
+		mcp.WithDescription(cfg.GetToolDescription("junior-r", junior.Description+" (read-only mode)")),
+	}, juniorParams...)...)
+
+	juniorRWXTool := mcp.NewTool("junior-rwx", append([]mcp.ToolOption{
 		mcp.WithDescription(cfg.GetToolDescription("junior-rwx", junior.Description+" (full access mode)")),
-		mcp.WithString("prompt",
-			mcp.Required(),
-			mcp.Description("Your question or request for the junior AI"),
-		),
-		mcp.WithBoolean("json_output",
-			mcp.Description("Default: false; response will be a structured JSON"),
-		),
-		mcp.WithString("conversation",
-			mcp.Description("Continue previous conversation using its ID"),
-		),
-		mcp.WithArray("filepaths",
-			mcp.Description("List of absolute paths to files that will be included as context"),
-		),
-		mcp.WithString("bash_cmd",
-			mcp.Description("Bash command to execute; junior will receive the command itself, stdout, stderr, and its exit status"),
-		),
-	)
+	}, juniorParams...)...)
 
 	logwormTool := mcp.NewTool("logworm",
 		mcp.WithDescription(cfg.GetToolDescription("logworm", logworm.Description)),
