@@ -14,6 +14,7 @@ import (
 
 func main() {
 	generateConfig := flag.Bool("generate-config", false, "Generate default config file and exit")
+	logwormOnly := flag.Bool("logworm-only", false, "Enable only the logworm tool, disable junior tools")
 	flag.Parse()
 
 	if *generateConfig {
@@ -63,8 +64,10 @@ func main() {
 		),
 	)
 
-	s.AddTool(juniorRTool, jr.HandleCallReadonly)
-	s.AddTool(juniorRWXTool, jr.HandleCall)
+	if !*logwormOnly {
+		s.AddTool(juniorRTool, jr.HandleCallReadonly)
+		s.AddTool(juniorRWXTool, jr.HandleCall)
+	}
 	s.AddTool(logwormTool, lw.HandleCall)
 
 	if err := server.ServeStdio(s); err != nil {
