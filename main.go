@@ -38,7 +38,7 @@ func main() {
 	)
 
 	jr := junior.New()
-	lw := logworm.New()
+	lw := logworm.New(cfg.GetLogwormPassthroughThreshold())
 
 	juniorParams := []mcp.ToolOption{
 		mcp.WithString("prompt", mcp.Required(), mcp.Description("Your question or request for the junior AI")),

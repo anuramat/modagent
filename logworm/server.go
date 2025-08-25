@@ -2,6 +2,8 @@ package logworm
 
 import (
 	"context"
+	"encoding/json"
+	"os/exec"
 
 	"github.com/anuramat/modagent/core"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -9,14 +11,16 @@ import (
 
 type Server struct {
 	*core.BaseServer
+	passthroughThreshold int
 }
 
 type Config struct{}
 
-func New() *Server {
+func New(passthroughThreshold int) *Server {
 	config := &Config{}
 	return &Server{
-		BaseServer: core.NewBaseServer(config),
+		BaseServer:           core.NewBaseServer(config),
+		passthroughThreshold: passthroughThreshold,
 	}
 }
 
@@ -28,6 +32,24 @@ func (s *Server) HandleCall(ctx context.Context, request mcp.CallToolRequest) (*
 		return mcp.NewToolResultError("bash_cmd is required and must be a string"), nil
 	}
 
+	// Execute command and check output length for passthrough
+	cmd := exec.CommandContext(ctx, "bash", "-c", bashCmd)
+	output, err := cmd.Output()
+	if err != nil {
+		return mcp.NewToolResultError("Failed to execute command: " + err.Error()), nil
+	}
+
+	// If output is shorter than threshold, return it directly
+	if len(output) < s.passthroughThreshold {
+		response := map[string]interface{}{
+			"response":     string(output),
+			"conversation": "",
+		}
+		jsonResponse, _ := json.Marshal(response)
+		return mcp.NewToolResultText(string(jsonResponse)), nil
+	}
+
+	// Otherwise, use the normal logworm processing
 	coreArgs := map[string]any{
 		"prompt":   "Parse and analyze this command output",
 		"bash_cmd": bashCmd,

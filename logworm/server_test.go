@@ -7,12 +7,15 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	server := New()
+	server := New(2000)
 	if server == nil {
 		t.Fatal("Expected server to be created")
 	}
 	if server.BaseServer == nil {
 		t.Fatal("Expected BaseServer to be initialized")
+	}
+	if server.passthroughThreshold != 2000 {
+		t.Fatalf("Expected passthrough threshold to be 2000, got %d", server.passthroughThreshold)
 	}
 }
 

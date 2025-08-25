@@ -16,7 +16,12 @@ type Config struct {
 }
 
 type ToolConfig struct {
-	Description Description `yaml:"description"`
+	Description     Description      `yaml:"description"`
+	LogwormSettings *LogwormSettings `yaml:"settings,omitempty"`
+}
+
+type LogwormSettings struct {
+	PassthroughThreshold int `yaml:"passthrough_threshold"`
 }
 
 type Description struct {
@@ -119,6 +124,9 @@ func GenerateDefaultConfig() error {
 				Description: Description{
 					Text: &logwormDesc,
 				},
+				LogwormSettings: &LogwormSettings{
+					PassthroughThreshold: 2000,
+				},
 			},
 		},
 	}
@@ -167,4 +175,11 @@ func (c *Config) GetToolDescription(toolName, defaultDesc string) string {
 
 	// Neither text nor path specified, return default
 	return defaultDesc
+}
+
+func (c *Config) GetLogwormPassthroughThreshold() int {
+	if toolConfig, exists := c.Tools["logworm"]; exists && toolConfig.LogwormSettings != nil {
+		return toolConfig.LogwormSettings.PassthroughThreshold
+	}
+	return 2000 // default value
 }
