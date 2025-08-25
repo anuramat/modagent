@@ -17,16 +17,20 @@ This is a Go-based MCP (Model Context Protocol) server called "modagent" that pr
 ## Architecture
 
 - **Modular Go application**: Main entry point (`main.go`) with functionality split into packages
+- **Core package** (`core/`): Shared server implementation and business logic
+  - `server.go`: `BaseServer` with `HandleCall`/`HandleCallReadonly` methods, argument parsing, mods command building, stdin preparation, and response formatting
+  - `description.go`: Utility for embedding descriptions
 - **Config package** (`config/`): XDG-compliant configuration system
   - `config.go`: Config loading, validation, and generation with tool description overrides
-- **Junior package** (`junior/`): Contains the core server implementation
-  - `server.go`: Server struct with modular role handling logic
+- **Junior package** (`junior/`): General AI assistance tool implementation
+  - `server.go`: Lightweight wrapper around `core.BaseServer` with junior-specific role configuration
   - `description.go`: Embeds the tool description from `description.md`
   - `description.md`: Markdown documentation for the junior tool
 - **Logworm package** (`logworm/`): Specialized tool for command output analysis
-  - `server.go`: Wraps junior with logworm role
+  - `server.go`: Wraps `core.BaseServer` with custom `HandleCall` that transforms logworm requests into core requests with logworm role
   - `description.go`: Embeds tool description
   - `description.md`: Markdown documentation for logworm
+- **Testing utilities** (`testutils/`): Shared test helpers and mocks for comprehensive test coverage
 - **Core functionality**: Wraps the `mods` CLI tool to provide LLM capabilities via MCP protocol
 - **Tool interfaces**: Exposes three tools:
   - `junior-r` (read-only): General AI assistance with file/bash access disabled
@@ -116,6 +120,9 @@ treefmt
 ### Testing and Validation
 
 ```bash
+# Run all tests
+go test ./...
+
 # Check if flake builds successfully
 nix flake check
 
@@ -136,12 +143,34 @@ The server is organized into the following components:
 
 ### Main (`main.go`)
 
-- Handles command-line flags (`-generate-config`)
+- Handles command-line flags (`-generate-config`, `-logworm-only`)
 - Loads and validates configuration on startup
 - Creates MCP server instance with version "unstable"
-- Instantiates junior and logworm servers
-- Registers three tools: `junior-r`, `junior-rwx`, and `logworm` with configurable descriptions
+- Instantiates junior and logworm servers using their respective constructors
+- Registers tools with configurable descriptions:
+  - `junior-r` and `junior-rwx` (unless `-logworm-only` flag is used)
+  - `logworm` (always enabled)
 - Serves via stdio for MCP client integration
+
+### Core Server (`core/server.go`)
+
+The `BaseServer` provides shared functionality for all tools:
+
+- **`HandleCall`/`HandleCallReadonly`**: Main entry points that delegate to internal handler with readonly flag
+- **Request Processing Pipeline**:
+  1. **Parse arguments**: Extract and validate parameters using `ParseArgs`
+  2. **Build mods command**: Construct command with appropriate flags via `buildModsCmd`:
+     - `-j` for JSON output
+     - `--continue=<id>` for conversation continuation 
+     - `-R <role>` using tool-specific `GetDefaultRole` or explicit role parameter
+  3. **Prepare stdin**: Execute bash commands, read files, wrap outputs in XML tags via `prepareStdin`
+  4. **Execute mods**: Run the command and capture stdout/stderr via `runCommand`
+  5. **Extract conversation ID**: Parse stderr for "Conversation saved:" pattern
+  6. **Build response**: Format JSON response with response, conversation ID, and temp directory info
+  7. **Handle JSON parsing**: Parse LLM response as JSON when `json_output=true`
+
+- **Temporary Directory Management**: Creates timestamped temp directories for bash command outputs, saves stdout/stderr files
+- **ServerConfig Interface**: Allows different tools to provide their own role configuration via `GetDefaultRole` method
 
 ### Config System (`config/config.go`)
 
@@ -153,23 +182,15 @@ The server is organized into the following components:
 
 ### Junior Server (`junior/server.go`)
 
-The `HandleCall` method processes requests through these steps:
+- **Lightweight Wrapper**: Embeds `core.BaseServer` and implements `core.ServerConfig` interface
+- **Role Configuration**: `GetDefaultRole` returns `"junior-r"` for readonly mode, `"junior-rwx"` for full access
+- **Inheritance**: Inherits all functionality from `BaseServer` with no additional request processing
 
-1. **Parse arguments**: Extract and validate parameters from the request
-2. **Build mods command**: Construct command with appropriate flags:
-   - `-f --format-as=json` for JSON output
-   - `--continue=<id>` for conversation continuation
-   - `-R <role>` where role can be:
-     - Explicit role from `role` parameter
-     - `junior-r` for readonly mode
-     - `junior-rwx` for full access mode
-     - Custom roles like `logworm` for specialized tools
-3. **Prepare stdin**:
-   - Execute bash command if provided, wrap output in XML tags
-   - Read file contents if provided, wrap in XML tags
-4. **Execute mods**: Run the command with prepared stdin
-5. **Extract conversation ID**: Parse stderr for "Conversation saved:" pattern
-6. **Build response**: Return JSON with response and conversation ID
-7. **Handle JSON parsing**: Parse response as JSON when `json_output=true`
+### Logworm Server (`logworm/server.go`)
 
-The server runs in stdio mode, making it suitable for MCP client integration.
+- **Specialized Handler**: Custom `HandleCall` method that transforms logworm requests into core requests
+- **Request Transformation**: Takes `bash_cmd` parameter and creates internal request with:
+  - Fixed prompt: "Parse and analyze this command output"
+  - Original bash command
+  - Fixed role: "logworm"
+- **Role Configuration**: `GetDefaultRole` always returns `"logworm"` regardless of readonly flag
